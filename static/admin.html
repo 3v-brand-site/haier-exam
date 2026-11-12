@@ -28,6 +28,7 @@
     .wait { color: var(--warn); }
     .qr { width: 220px; height: 220px; display: block; margin: 0 auto 8px; background: #fff; }
     .center { text-align: center; color: var(--muted); font-size: 13px; word-break: break-all; }
+    .del { border: 1px solid #C8102E; color: #C8102E; background: #fff; border-radius: 8px; padding: 4px 10px; cursor: pointer; font-size: 13px; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -60,7 +61,7 @@
       <div class="card" style="margin-top:16px;overflow:auto">
         <table>
           <thead>
-            <tr><th>姓名</th><th>网点</th><th>状态</th><th>分数</th><th>交卷时间</th></tr>
+            <tr><th>姓名</th><th>网点</th><th>状态</th><th>分数</th><th>交卷时间</th><th></th></tr>
           </thead>
           <tbody id="rows"></tbody>
         </table>
@@ -100,8 +101,9 @@
           <td class="${r.submitted_at ? "ok" : "wait"}">${r.status}</td>
           <td>${r.score == null ? "—" : r.score + " / " + r.total}</td>
           <td>${fmt(r.submitted_at)}</td>
+          <td><button class="del" type="button" data-id="${r.id}" data-name="${r.name}">删除</button></td>
         </tr>
-      `).join("") || `<tr><td colspan="5">还没有人进入考试</td></tr>`;
+      `).join("") || `<tr><td colspan="6">还没有人进入考试</td></tr>`;
     }
 
     $("login-btn").onclick = async () => {
@@ -118,6 +120,13 @@
       await load();
     };
     $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("login-btn").click(); });
+    $("rows").addEventListener("click", async (e) => {
+      const b = e.target.closest(".del");
+      if (!b) return;
+      if (!confirm("确定删除「" + b.dataset.name + "」的记录吗？删除后无法恢复。")) return;
+      await fetch("/api/admin/session/" + encodeURIComponent(b.dataset.id), { method: "DELETE", headers: { Authorization: "Bearer " + token } });
+      await load();
+    });
     $("refresh-btn").onclick = load;
     $("export-btn").onclick = () => { location.href = "/api/admin/export.csv?token=" + encodeURIComponent(token); };
     if (token) load();

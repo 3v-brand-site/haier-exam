@@ -322,6 +322,7 @@ def admin_results(authorization: str | None = Header(default=None)):
         out = []
         for r in rows:
             out.append({
+                "id": r["token"],
                 "name": r["name"],
                 "outlet": r["outlet"],
                 "started_at": r["started_at"],
@@ -331,6 +332,18 @@ def admin_results(authorization: str | None = Header(default=None)):
                 "status": "已交卷" if r["submitted_at"] else "考试中",
             })
         return {"results": out, "count": len(out), "submitted": sum(1 for x in out if x["submitted_at"])}
+    finally:
+        conn.close()
+
+
+@app.delete("/api/admin/session/{sid}")
+def admin_delete(sid: str, authorization: str | None = Header(default=None)):
+    require_admin(authorization)
+    conn = db()
+    try:
+        conn.execute("DELETE FROM sessions WHERE token = ?", (sid,))
+        conn.commit()
+        return {"ok": True}
     finally:
         conn.close()
 
