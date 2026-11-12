@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>考试后台</title>
+  <style>
+    :root { --blue:#005AAA; --bg:#F3F6FA; --text:#1A1F2B; --muted:#667085; --line:#E6EAF0; --ok:#0B8A4A; --warn:#B54708; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif; }
+    header { background: #005AAA; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    header h1 { margin: 0; font-size: 18px; }
+    .wrap { max-width: 1000px; margin: 0 auto; padding: 20px; }
+    .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(16,36,72,.06); margin-bottom: 16px; }
+    input { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 16px; }
+    .btn { border: 0; border-radius: 10px; padding: 10px 16px; background: var(--blue); color: #fff; font-weight: 600; cursor: pointer; }
+    .btn.secondary { background: #fff; color: var(--blue); border: 1px solid var(--blue); }
+    .err { color: #C8102E; font-size: 13px; }
+    .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+    .stat { flex: 1; min-width: 120px; background: #fff; border-radius: 12px; padding: 14px; }
+    .stat b { display: block; font-size: 28px; color: var(--blue); }
+    .stat span { color: var(--muted); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; }
+    .ok { color: var(--ok); font-weight: 600; }
+    .wait { color: var(--warn); }
+    .qr { width: 220px; height: 220px; display: block; margin: 0 auto 8px; background: #fff; }
+    .center { text-align: center; color: var(--muted); font-size: 13px; word-break: break-all; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>海尔空调维修测试 · 后台</h1>
+    <div id="toolbar" class="hidden">
+      <button class="btn secondary" id="export-btn" type="button">导出 CSV</button>
+      <button class="btn secondary" id="refresh-btn" type="button">刷新</button>
+    </div>
+  </header>
+  <div class="wrap">
+    <section id="login" class="card">
+      <p>请输入管理员密码。</p>
+      <p class="err" id="login-err"></p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="password" type="password" placeholder="管理员密码" />
+        <button class="btn" id="login-btn" type="button">登录</button>
+      </div>
+    </section>
+
+    <section id="board" class="hidden">
+      <div class="card">
+        <h2 style="margin:0 0 12px;font-size:16px">考生入口二维码</h2>
+        <img class="qr" id="qr" alt="考试二维码" />
+        <div class="center" id="exam-url"></div>
+        <p class="center">所有选手扫这一个码。每人填写姓名和网点后，会抽到不同的 50 道题。</p>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="card" style="margin-top:16px;overflow:auto">
+        <table>
+          <thead>
+            <tr><th>姓名</th><th>网点</th><th>状态</th><th>分数</th><th>交卷时间</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let token = sessionStorage.getItem("admin-token") || "";
+
+    function fmt(ts) {
+      if (!ts) return "—";
+      const d = new Date(ts * 1000);
+      const p = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    }
+
+    async function load() {
+      const res = await fetch("/api/admin/results", { headers: { Authorization: "Bearer " + token } });
+      if (res.status === 401) { sessionStorage.removeItem("admin-token"); token = ""; $("login").classList.remove("hidden"); $("board").classList.add("hidden"); $("toolbar").classList.add("hidden"); return; }
+      const data = await res.json();
+      $("login").classList.add("hidden");
+      $("board").classList.remove("hidden");
+      $("toolbar").classList.remove("hidden");
+      $("qr").src = "/qr.png?t=" + Date.now();
+      const meta = await fetch("/api/exam-url").then((r) => r.json());
+      $("exam-url").textContent = meta.url;
+      $("stats").innerHTML = `
+        <div class="stat"><b>${data.count}</b><span>已进入</span></div>
+        <div class="stat"><b>${data.submitted}</b><span>已交卷</span></div>
+        <div class="stat"><b>${data.count - data.submitted}</b><span>考试中</span></div>
+      `;
+      $("rows").innerHTML = data.results.map((r) => `
+        <tr>
+          <td>${r.name}</td>
+          <td>${r.outlet}</td>
+          <td class="${r.submitted_at ? "ok" : "wait"}">${r.status}</td>
+          <td>${r.score == null ? "—" : r.score + " / " + r.total}</td>
+          <td>${fmt(r.submitted_at)}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="5">还没有人进入考试</td></tr>`;
+    }
+
+    $("login-btn").onclick = async () => {
+      $("login-err").textContent = "";
+      const password = $("password").value;
+      const res = await fetch("/api/admin/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (!res.ok) { $("login-err").textContent = data.detail || "登录失败"; return; }
+      token = data.token;
+      sessionStorage.setItem("admin-token", token);
+      await load();
+    };
+    $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") $("login-btn").click(); });
+    $("refresh-btn").onclick = load;
+    $("export-btn").onclick = () => { location.href = "/api/admin/export.csv?token=" + encodeURIComponent(token); };
+    if (token) load();
+    setInterval(() => { if (token) load(); }, 8000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>海尔空调维修测试</title>
+  <style>
+    :root {
+      --blue: #005AAA;
+      --blue-d: #00427C;
+      --red: #C8102E;
+      --bg: #F3F6FA;
+      --card: #fff;
+      --text: #1A1F2B;
+      --muted: #667085;
+      --line: #E6EAF0;
+      --ok: #0B8A4A;
+      --warn: #B54708;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+      font-family: "PingFang SC", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      min-height: 100%; }
+    body { padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); }
+    .wrap { max-width: 640px; margin: 0 auto; }
+    header {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--blue-d) 100%);
+      color: #fff; border-radius: 16px; padding: 22px 20px 20px; margin-bottom: 16px;
+    }
+    header h1 { margin: 0 0 6px; font-size: 20px; letter-spacing: .04em; }
+    header p { margin: 0; opacity: .9; font-size: 13px; line-height: 1.6; }
+    .card { background: var(--card); border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(16,36,72,.06); }
+    label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 6px; }
+    input[type=text] {
+      width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+      font-size: 16px; margin-bottom: 14px; background: #fff; color: var(--text);
+    }
+    input[type=text]:focus { outline: 2px solid rgba(0,90,170,.25); border-color: var(--blue); }
+    .btn {
+      display: block; width: 100%; border: 0; border-radius: 12px; padding: 14px 16px;
+      font-size: 16px; font-weight: 600; color: #fff; background: var(--blue); cursor: pointer;
+    }
+    .btn:disabled { opacity: .5; }
+    .btn.secondary { background: #fff; color: var(--blue); border: 1px solid var(--blue); }
+    .btn.danger { background: var(--red); }
+    .row { display: flex; gap: 10px; }
+    .row .btn { flex: 1; }
+    .err { color: var(--red); font-size: 13px; margin: 0 0 12px; display: none; }
+    .meta { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+    .progress {
+      height: 6px; background: #E8EEF6; border-radius: 99px; overflow: hidden; margin: 8px 0 16px;
+    }
+    .progress > i { display: block; height: 100%; width: 0; background: var(--blue); transition: width .2s; }
+    .stem { font-size: 16px; line-height: 1.65; margin: 0 0 8px; font-weight: 600; }
+    .tag { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 99px;
+      padding: 2px 8px; margin: 0 0 12px; background: #EEF5FC; color: var(--blue); }
+    .tag.multi { background: #FFF3E8; color: var(--warn); }
+    .opt {
+      display: block; width: 100%; text-align: left; border: 1px solid var(--line); background: #fff;
+      border-radius: 12px; padding: 12px 12px; margin: 0 0 8px; font-size: 15px; line-height: 1.5; cursor: pointer;
+    }
+    .opt.on { border-color: var(--blue); background: #E8F2FB; }
+    .opt b { color: var(--blue); margin-right: 6px; }
+    .hidden { display: none !important; }
+    .score-box { text-align: center; padding: 16px 8px 8px; }
+    .score-box .num { font-size: 56px; font-weight: 700; color: var(--blue); line-height: 1; }
+    .score-box .sub { color: var(--muted); margin-top: 8px; font-size: 14px; }
+    .hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>海尔空调维修测试</h1>
+      <p>共 50 题，每题 2 分，满分 100 分。多选题需全部选对才得分。</p>
+    </header>
+
+    <section id="entry" class="card">
+      <p class="err" id="entry-err"></p>
+      <label for="name">姓名</label>
+      <input id="name" type="text" maxlength="40" placeholder="请输入姓名" autocomplete="name" />
+      <label for="outlet">网点名</label>
+      <input id="outlet" type="text" maxlength="80" placeholder="请输入网点名称" />
+      <button class="btn" id="start-btn" type="button">开始考试</button>
+      <p class="hint">同一姓名和网点只能交卷一次。中途退出后，用同样的信息进入可继续作答。</p>
+    </section>
+
+    <section id="exam" class="hidden">
+      <div class="card">
+        <div class="meta" id="exam-meta"></div>
+        <div class="progress"><i id="bar"></i></div>
+        <div id="qbox"></div>
+        <div class="row" style="margin-top:14px">
+          <button class="btn secondary" id="prev-btn" type="button">上一题</button>
+          <button class="btn" id="next-btn" type="button">下一题</button>
+        </div>
+        <button class="btn danger" id="submit-btn" type="button" style="margin-top:10px">交卷</button>
+        <p class="err" id="exam-err" style="margin-top:10px"></p>
+      </div>
+    </section>
+
+    <section id="done" class="card hidden">
+      <div class="score-box">
+        <div class="num" id="score-num">0</div>
+        <div class="sub" id="score-sub"></div>
+      </div>
+    </section>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { questions: [], index: 0, answers: {}, token: "", name: "", outlet: "" };
+
+    function show(id) {
+      ["entry", "exam", "done"].forEach((x) => $(x).classList.toggle("hidden", x !== id));
+    }
+    function showErr(el, msg) {
+      el.style.display = msg ? "block" : "none";
+      el.textContent = msg || "";
+    }
+    function typeLabel(t) {
+      if (t === "multiple") return "多选题";
+      if (t === "boolean") return "判断题";
+      return "单选题";
+    }
+    function answeredCount() {
+      return state.questions.filter((q) => {
+        const a = state.answers[q.id];
+        if (q.type === "multiple") return Array.isArray(a) && a.length;
+        return !!a;
+      }).length;
+    }
+    function render() {
+      const q = state.questions[state.index];
+      if (!q) return;
+      const n = state.questions.length;
+      const i = state.index + 1;
+      $("exam-meta").textContent = `${state.name} ｜ ${state.outlet} ｜ 第 ${i} / ${n} 题，已答 ${answeredCount()} 题`;
+      $("bar").style.width = `${(i / n) * 100}%`;
+      const cur = state.answers[q.id];
+      const isMulti = q.type === "multiple";
+      const opts = q.options.map((o) => {
+        const on = isMulti ? (Array.isArray(cur) && cur.includes(o.key)) : cur === o.key;
+        return `<button type="button" class="opt${on ? " on" : ""}" data-key="${o.key}"><b>${o.key}.</b>${o.text}</button>`;
+      }).join("");
+      $("qbox").innerHTML = `
+        <div class="tag${isMulti ? " multi" : ""}">${typeLabel(q.type)}${isMulti ? " · 全部选对才得分" : ""}</div>
+        <p class="stem">${i}. ${q.stem}</p>
+        ${opts}
+      `;
+      $("qbox").querySelectorAll(".opt").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const key = btn.getAttribute("data-key");
+          if (isMulti) {
+            const set = new Set(Array.isArray(cur) ? cur : []);
+            if (set.has(key)) set.delete(key); else set.add(key);
+            state.answers[q.id] = Array.from(set).sort();
+          } else {
+            state.answers[q.id] = key;
+          }
+          render();
+        });
+      });
+      $("prev-btn").disabled = state.index === 0;
+      $("next-btn").textContent = state.index === n - 1 ? "回到第一题" : "下一题";
+    }
+
+    $("start-btn").onclick = async () => {
+      const name = $("name").value.trim();
+      const outlet = $("outlet").value.trim();
+      showErr($("entry-err"), "");
+      if (!name || !outlet) { showErr($("entry-err"), "请填写姓名和网点名"); return; }
+      $("start-btn").disabled = true;
+      try {
+        const res = await fetch("/api/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, outlet }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "无法开始考试");
+        state.token = data.token;
+        state.name = data.name;
+        state.outlet = data.outlet;
+        state.questions = data.questions;
+        state.index = 0;
+        state.answers = JSON.parse(localStorage.getItem("exam-ans-" + data.token) || "{}");
+        localStorage.setItem("exam-token", data.token);
+        show("exam");
+        render();
+      } catch (e) {
+        showErr($("entry-err"), e.message || "网络异常");
+      } finally {
+        $("start-btn").disabled = false;
+      }
+    };
+
+    $("prev-btn").onclick = () => { if (state.index > 0) { state.index--; render(); } };
+    $("next-btn").onclick = () => {
+      state.index = (state.index + 1) % state.questions.length;
+      render();
+    };
+
+    function persist() {
+      if (state.token) localStorage.setItem("exam-ans-" + state.token, JSON.stringify(state.answers));
+    }
+    document.addEventListener("click", persist);
+    window.addEventListener("pagehide", persist);
+
+    $("submit-btn").onclick = async () => {
+      showErr($("exam-err"), "");
+      const left = state.questions.length - answeredCount();
+      const ok = confirm(left > 0 ? `还有 ${left} 题未作答，确定交卷吗？未作答的题将计 0 分。` : "确定交卷吗？交卷后不能再改。");
+      if (!ok) return;
+      $("submit-btn").disabled = true;
+      persist();
+      try {
+        const res = await fetch("/api/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: state.token, answers: state.answers }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "交卷失败");
+        $("score-num").textContent = data.score;
+        $("score-sub").textContent = `${state.name} ｜ ${state.outlet} ｜ 满分 ${data.total} 分`;
+        show("done");
+      } catch (e) {
+        showErr($("exam-err"), e.message || "交卷失败");
+        $("submit-btn").disabled = false;
+      }
+    };
+
+    (async () => {
+      const token = localStorage.getItem("exam-token");
+      if (!token) return;
+      try {
+        const res = await fetch("/api/session/" + token);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.submitted) {
+          state.name = data.name; state.outlet = data.outlet;
+          $("score-num").textContent = data.score;
+          $("score-sub").textContent = `${data.name} ｜ ${data.outlet} ｜ 满分 ${data.total} 分`;
+          show("done");
+          return;
+        }
+        $("name").value = data.name;
+        $("outlet").value = data.outlet;
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>
