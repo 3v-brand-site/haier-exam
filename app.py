@@ -13,6 +13,7 @@ from pathlib import Path
 
 import qrcode
 from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -129,6 +130,13 @@ def init_db() -> None:
 init_db()
 
 app = FastAPI(title="海尔空调维修测试")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 
